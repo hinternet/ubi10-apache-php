@@ -32,9 +32,10 @@ make health         # exec /opt/drupal/scripts/healthcheck.sh; prints pong
 make stop
 ```
 
-Optional: `make scan` (Trivy HIGH/CRITICAL, `--ignore-unfixed`; set
-`TRIVY_CACHE_DIR` if `~/.cache/trivy` is not writable), `make versions`
-(php/httpd/composer + `rpm -qa`).
+Optional: `make scan` (Trivy HIGH/CRITICAL, `--ignore-unfixed`; uses
+`CONTAINER_ENGINE save` so Docker/Podman sockets are not required; cache
+defaults to `~/.local/share/trivy`), `make versions` (php/httpd/composer +
+`rpm -qa`). Use the same `CONTAINER_ENGINE` as `make build`.
 
 ## Publish to Docker Hub (`docker.io`)
 

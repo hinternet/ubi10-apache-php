@@ -21,6 +21,8 @@ IMAGE_VERSION_MINOR := $(word 1,$(subst ., ,$(IMAGE_VERSION))).$(word 2,$(subst 
 PUSH_LATEST      ?= 1
 PUSH_MINOR       ?= 1
 PUSH_DRY_RUN     ?= 0
+# Default away from ~/.cache/trivy (often created by sudo, then EPERM).
+TRIVY_CACHE_DIR  ?= $(HOME)/.local/share/trivy
 
 IMAGE := $(IMAGE_NAME):$(IMAGE_TAG)
 
@@ -117,13 +119,30 @@ lint: ## hadolint + shellcheck (skips a tool if it is not installed)
 	fi; \
 	exit $$status
 
-scan: ## Trivy HIGH/CRITICAL --ignore-unfixed (TRIVY_CACHE_DIR if cache is not writable)
-	@if command -v trivy >/dev/null 2>&1; then \
-		trivy image --ignore-unfixed --severity HIGH,CRITICAL --exit-code 0 localhost/$(IMAGE) \
-			|| trivy image --ignore-unfixed --severity HIGH,CRITICAL --exit-code 0 $(IMAGE); \
-	else \
+scan: ## Trivy HIGH/CRITICAL --ignore-unfixed (same CONTAINER_ENGINE as make build)
+	@if ! command -v trivy >/dev/null 2>&1; then \
 		echo "SKIP: trivy not installed"; \
-	fi
+		exit 0; \
+	fi; \
+	cache="$(TRIVY_CACHE_DIR)"; \
+	mkdir -p "$$cache" || { echo "Cannot mkdir Trivy cache $$cache (set TRIVY_CACHE_DIR)"; exit 1; }; \
+	src="$(IMAGE)"; \
+	if ! $(CONTAINER_ENGINE) image inspect "$$src" >/dev/null 2>&1; then \
+		src="localhost/$(IMAGE)"; \
+	fi; \
+	if ! $(CONTAINER_ENGINE) image inspect "$$src" >/dev/null 2>&1; then \
+		echo "Image $(IMAGE) not found. Run: make build (CONTAINER_ENGINE=$(CONTAINER_ENGINE))"; \
+		exit 1; \
+	fi; \
+	tar="$$(mktemp "$${TMPDIR:-/tmp}/$(IMAGE_NAME)-scan.XXXXXX.tar")"; \
+	echo "--> $(CONTAINER_ENGINE) save $$src | trivy (cache $$cache)"; \
+	$(CONTAINER_ENGINE) save -o "$$tar" "$$src"; \
+	status=0; \
+	TRIVY_CACHE_DIR="$$cache" trivy image --input "$$tar" \
+		--ignore-unfixed --severity HIGH,CRITICAL --exit-code 0 \
+		--skip-version-check || status=$$?; \
+	rm -f "$$tar"; \
+	exit $$status
 
 versions: ## php/httpd/composer versions and rpm -qa from the image
 	$(CONTAINER_ENGINE) run --rm --user 1001:0 --entrypoint bash $(IMAGE) -lc \

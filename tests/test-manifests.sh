@@ -139,6 +139,14 @@ else
     fail "Makefile REGISTRY should default to docker.io"
 fi
 
+if grep -q 'trivy image --input' "${ROOT}/Makefile" \
+    && grep -q 'save -o' "${ROOT}/Makefile" \
+    && grep -q '.local/share/trivy' "${ROOT}/Makefile"; then
+    pass "make scan uses engine save + writable Trivy cache"
+else
+    fail "make scan must save via CONTAINER_ENGINE and use a writable cache"
+fi
+
 if grep -qE 'dckr_pat_|DOCKERHUB_TOKEN[[:space:]]*:=' "${ROOT}/Makefile"; then
     fail "Makefile must not hard-code a Docker Hub token"
 else

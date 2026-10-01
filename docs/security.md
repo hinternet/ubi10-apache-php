@@ -87,6 +87,8 @@ FPM workers inherit the container environment. Do not pass build-time secrets
 UBI digest, EPEL/Remi RPM sha256, Composer digest are pinned.
 `install_weak_deps=0`. SUID/SGID bits are stripped at build (`find -perm /6000`).
 `make scan` runs Trivy `--ignore-unfixed` for HIGH/CRITICAL when `trivy` is
-installed; it is evidence, not a substitute for `make test`. If
-`~/.cache/trivy` is not writable, set `TRIVY_CACHE_DIR` to a directory you
-own. `make scan` tries `localhost/$(IMAGE)` first (Podman), then `$(IMAGE)`.
+installed; it is evidence, not a substitute for `make test`. It saves the
+image with the same `CONTAINER_ENGINE` as `make build` and scans the tarball
+(no Docker/Podman API socket). Cache defaults to `~/.local/share/trivy`
+because `~/.cache/trivy` is often root-owned after a `sudo trivy` run. Override
+with `TRIVY_CACHE_DIR`.
