@@ -1,0 +1,2 @@
+CLI-only ini (appended to PHP_INI_SCAN_DIR when CMD is not "start").
+FPM does not load this directory.

@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drupal-runtime
+spec:
+  template:
+    spec:
+      volumes:
+        - name: public-files
+          persistentVolumeClaim:
+            claimName: drupal-public-files
+        - name: private-files
+          persistentVolumeClaim:
+            claimName: drupal-private-files

@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# oc apply -k examples/openshift/overlays/with-pvc
+# Set storageClassName on pvc.yaml to match the cluster.
+resources:
+  - ../../
+  - pvc.yaml
+patches:
+  - path: deployment-pvc.yaml

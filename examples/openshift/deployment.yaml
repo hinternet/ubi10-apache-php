@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drupal-runtime
+  labels:
+    app: drupal-runtime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drupal-runtime
+  template:
+    metadata:
+      labels:
+        app: drupal-runtime
+    spec:
+      # restricted-v2: do not pin runAsUser; do not set fsGroup: 0.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: httpd
+          # Replace via kustomization images.newName after push, or oc set image.
+          # Do not deploy :latest with IfNotPresent.
+          image: ubi10-apache-php:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          startupProbe:
+            exec:
+              command: ["/opt/drupal/scripts/healthcheck.sh"]
+            periodSeconds: 2
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            exec:
+              command: ["/opt/drupal/scripts/healthcheck.sh"]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["/opt/drupal/scripts/healthcheck.sh"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: run-httpd
+              mountPath: /run/httpd
+            - name: run-php-fpm
+              mountPath: /run/php-fpm
+            - name: public-files
+              mountPath: /var/www/html/web/sites/default/files
+            - name: private-files
+              mountPath: /var/www/html/files-private
+            - name: php-overrides
+              mountPath: /etc/drupal/php.d/zz-openshift.ini
+              subPath: zz-openshift.ini
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: run-httpd
+          emptyDir: {}
+        - name: run-php-fpm
+          emptyDir: {}
+        # emptyDir is for a first runtime smoke. For a real Drupal site use
+        # overlays/with-pvc (PVC). File sessions will not survive reschedule.
+        - name: public-files
+          emptyDir: {}
+        - name: private-files
+          emptyDir: {}
+        - name: php-overrides
+          configMap:
+            name: drupal-runtime-php
+            optional: true

@@ -1,0 +1,11 @@
+This directory holds Apache configuration fragments (not LoadModule).
+
+Files with a ".conf" extension are included from httpd.conf in sorted
+order, after conf.modules.d. Use a two-digit prefix:
+
+  10-php-fpm.conf          PHP-FPM SetHandler (unix socket, docroot web/)
+  15-deflate.conf          gzip HTML/JSON/CSS/JS/SVG (not precompressed .gz)
+  20-remoteip.conf         X-Forwarded-For / X-Forwarded-Proto from the ingress
+  25-healthz.conf          /healthz → FPM ping; local/RFC1918 only; dontlog
+  30-security-headers.conf nosniff, Referrer-Policy, HTTPoxy; strip debug headers
+  40-files-security.conf   SA-2006-006 / SA-2013-003 on public files; deny private

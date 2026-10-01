@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drupal-runtime-php
+  labels:
+    app: drupal-runtime
+data:
+  # Mounted at /etc/drupal/php.d/zz-openshift.ini (optional: true on the volume).
+  # Later zz-*.ini wins over /etc/drupal/php.d/10-drupal.ini.
+  # max_input_vars 10000 is a real Drupal override (nested paragraphs / big forms).
+  zz-openshift.ini: |
+    max_input_vars = 10000

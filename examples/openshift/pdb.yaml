@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: drupal-runtime
+  labels:
+    app: drupal-runtime
+spec:
+  # replicas: 1 — do not use minAvailable: 1 (blocks node drains).
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: drupal-runtime

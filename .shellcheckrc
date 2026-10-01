@@ -1,0 +1,3 @@
+# SC2016 (info): single-quoted PHP/Go templates must not expand locally.
+# SC2317 (info): cleanup() is invoked via trap, not a direct call.
+severity=warning

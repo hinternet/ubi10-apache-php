@@ -1,0 +1,58 @@
+This directory holds LoadModule fragments only.
+
+Files with a ".conf" extension are included from httpd.conf in sorted
+order. Use a two-digit prefix so load order is obvious:
+
+  00-mpm.conf    exactly one MPM (event)
+  10-base.conf   Drupal-needed Apache modules
+  20-proxy.conf  proxy, then proxy_fcgi (PHP-FPM)
+
+Do not put SetHandler, RewriteRule, or vhost config here — that belongs
+in /opt/httpd/conf.d/.
+
+Do not Include /etc/httpd/conf.modules.d/ (RPM drop-ins: systemd, dav,
+libphp, every proxy backend). Module *binaries* come from
+ServerRoot/modules -> /etc/httpd/modules.
+
+
+┌──────────────────┬───────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│ Module           │ What it does                                                  │ Enable?                                          │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ http_module      │ HTTP/1.1 core. Built-in (static).                             │ Already on. Cannot turn off. Not HTTP/2.         │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ http2 (mod_      │ HTTP/2. Separate package, not installed. Useful only if the   │ No (edge Route + 8080).                          │
+│ http2)           │ pod does TLS (8443 reencrypt).                                │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ watchdog_module  │ Timer/heartbeat used by proxy_hcheck, heartbeat, some SSL     │ No (nothing you load needs it).                  │
+│                  │ helpers.                                                      │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ logio_module     │ Adds %I / %O (bytes in/out) to LogFormat.                     │ Optional. Yes if you want traffic size in        │
+│                  │                                                               │ OpenShift logs.                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ version_module   │ <IfVersion> in config.                                        │ No unless you write version-gated snippets.      │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ access_compat_   │ Old Order / Allow / Deny (2.2). Drupal uses Require.          │ No.                                              │
+│ module           │                                                               │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ alias_module     │ Alias, ScriptAlias, Redirect.                                 │ Yes — already on. Keep.                          │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ auth_basic_      │ HTTP Basic Auth. Drupal does its own login.                   │ No (only if Apache itself should password-       │
+│ module           │                                                               │ protect a path).                                 │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ authn_core_      │ AuthType / AuthName core. Needed only with Apache auth.       │ No (same as basic).                              │
+│ module           │                                                               │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ authn_file_      │ AuthUserFile / .htpasswd.                                     │ No.                                              │
+│ module           │                                                               │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ authz_user_      │ Require user / Require valid-user.                            │ No. You already have authz_core + authz_host (   │
+│ module           │                                                               │ Require all, Require local).                     │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ autoindex_module │ Directory listings (Options Indexes).                         │ No. Drupal turns Indexes off; listing is a leak. │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ negotiation      │ Content negotiation / MultiViews. Drupal .htaccess sets -     │ No.                                              │
+│ _module          │ MultiViews because it breaks routing.                         │                                                  │
+├──────────────────┼───────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ proxy_http_      │ ProxyPass to an HTTP backend. PHP talks to DB/Redis/Solr, not │ No unless Apache itself reverse-proxies another  │
+│ module           │ httpd.                                                        │ service.                                         │
+└──────────────────┴───────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘

@@ -1,0 +1,12 @@
+# Remi module NVRs are unpinned by design (php:remi-8.4). EPEL/Remi *release*
+# RPMs are sha256-pinned in the Containerfile. Pinning every php-* NVR would
+# fight the module stream.
+# SC2016: PHP one-liners use single quotes so the shell does not expand $e/$k.
+ignored:
+  - DL3041
+  - SC2016
+trustedRegistries:
+  - docker.io
+  - docker.io/redhat
+  - docker.io/library
+  - docker.io/composer

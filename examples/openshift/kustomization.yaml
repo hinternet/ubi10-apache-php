@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# oc apply -k examples/openshift
+# After `make push`, set images.newName, e.g.
+#   docker.io/<hub-user>/ubi10-apache-php
+#   image-registry.openshift-image-registry.svc:5000/myproject/ubi10-apache-php
+resources:
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - route.yaml
+  - networkpolicy.yaml
+  - pdb.yaml
+images:
+  - name: ubi10-apache-php
+    newName: ubi10-apache-php
+    newTag: "1.0.0"

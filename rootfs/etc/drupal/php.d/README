@@ -1,0 +1,13 @@
+Drupal PHP overrides. Scanned after /etc/php.d (see PHP_INI_SCAN_DIR), so
+values here win over Remi defaults. Drop zz-*.ini downstream to override.
+
+Do not add extension= lines — Remi already loads the .so files.
+
+  10-drupal.ini      memory, uploads, time, sessions
+  20-opcache.ini     Drupal-sized opcache (immutable image)
+  40-apcu.ini        APCu 128M, serializer=php (Drupal 11 core default serializer)
+  40-igbinary.ini    compact strings (no session handler)
+  50-memcached.ini   igbinary serializer, no default server
+  50-redis.ini       comment-only; no host / no session handler
+
+CLI-only overrides live in /etc/drupal/php-cli.d (non-start path only).

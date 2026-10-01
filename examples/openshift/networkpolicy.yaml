@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: drupal-runtime
+  labels:
+    app: drupal-runtime
+spec:
+  podSelector:
+    matchLabels:
+      app: drupal-runtime
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Service + OpenShift router. Tighten from: namespaceSelector in production.
+    - ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS, MariaDB/PostgreSQL, Redis/Memcached, Composer (build pods). Tighten later.
+    - {}

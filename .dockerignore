@@ -1,0 +1,14 @@
+.git
+.gitignore
+**/.git
+
+docs
+examples
+tests
+tests-output
+
+README.md
+LICENSE
+Makefile
+.dockerignore
+*.md
