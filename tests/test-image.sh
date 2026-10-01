@@ -122,6 +122,16 @@ else
     fail "PATH missing vendor/bin: ${clipath}"
 fi
 
+own="$(cli bash -c 'stat -c "%u:%g %a" /etc/drupal/php.d; stat -c "%u:%g %a" /var/www/html; test -x /opt/drupal/scripts/entrypoint.sh && echo exec_ok')"
+phpd_own="$(printf '%s\n' "${own}" | sed -n '1p')"
+html_own="$(printf '%s\n' "${own}" | sed -n '2p')"
+if [[ "${phpd_own}" == "1001:0 775" && "${html_own}" == "1001:0 775" && "${own}" == *exec_ok* ]]; then
+    pass "g=u ownership 1001:0 775 on php.d and HOME; scripts executable"
+    log "    ${own}" | sed 's/^/    /'
+else
+    fail "expected 1001:0 775 + exec_ok, got: ${own}"
+fi
+
 climem="$(cli php -r 'echo ini_get("memory_limit");')"
 if [[ "${climem}" == "-1" ]]; then
     pass "CLI php-cli.d memory_limit=-1 (non-start path)"

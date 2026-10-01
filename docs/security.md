@@ -5,6 +5,8 @@
 - `USER 1001`, primary gid **0**. OpenShift assigns an arbitrary UID; the
   process still has gid 0. File ownership is `1001:0` with `chmod g=u`
   (0775/0664). **Never** `chmod 777`. **Never** `chmod g=u /etc/passwd` (RHSA).
+  The image applies `g=u` **before** `chown 1001:0` so rootless Podman/Docker
+  builds (typical on Ubuntu) do not fail with `chmod: Operation not permitted`.
 - If the runtime UID is missing from `/etc/passwd`, `nss_wrapper` synthesizes a
   `default` passwd line (not `drupal` — that name is already uid 1001). CRI-O
   and Podman often inject the UID themselves; then nss_wrapper is skipped.

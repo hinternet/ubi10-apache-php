@@ -106,6 +106,15 @@ else
     fail "configmap should set a real override (max_input_vars = 10000)"
 fi
 
+cf="${ROOT}/Containerfile"
+line_gu="$(grep -n 'chmod g=u' "${cf}" | head -1 | cut -d: -f1)"
+line_chown="$(grep -n 'chown -R' "${cf}" | head -1 | cut -d: -f1)"
+if [[ -n "${line_gu}" && -n "${line_chown}" && "${line_gu}" -lt "${line_chown}" ]]; then
+    pass "Containerfile chmod g=u before chown (rootless-safe)"
+else
+    fail "chmod g=u must run before chown -R (got g=u@${line_gu} chown@${line_chown})"
+fi
+
 if grep -qE 'useradd -l -u' "${ROOT}/Containerfile"; then
     pass "Containerfile useradd -l"
 else

@@ -78,10 +78,13 @@ RUN set -x; \
     ln -sfn ${HTTPD_CONF} /etc/httpd/conf/httpd.conf; \
     chmod +x /opt/drupal/scripts/entrypoint.sh \
              /opt/drupal/scripts/healthcheck.sh; \
+    # g=u while still root-owned. Rootless Podman/Docker often lack CAP_FOWNER
+    # after chown 1001:0, so chmod -R g=u then fails with EPERM (Ubuntu).
+    # Skip symlinks (chmod would follow /opt/httpd/modules → RPM /etc/httpd/modules).
+    find /etc/drupal /opt/httpd /opt/drupal \
+        ${HOME} /tmp/php-sessions /run/httpd /run/php-fpm \
+        \( -type d -o -type f \) -exec chmod g=u {} +; \
     chown -R ${UID}:${GID} \
-        /etc/drupal /opt/httpd /opt/drupal \
-        ${HOME} /tmp/php-sessions /run/httpd /run/php-fpm; \
-    chmod -R g=u \
         /etc/drupal /opt/httpd /opt/drupal \
         ${HOME} /tmp/php-sessions /run/httpd /run/php-fpm; \
     find / -xdev -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true; \
