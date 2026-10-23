@@ -175,6 +175,13 @@ else
     fail "httpd.conf LimitRequestBody must be 134217728"
 fi
 
+fpm_www="${ROOT}/rootfs/opt/httpd/conf/php-fpm.d/www.conf"
+if grep -qE '^php_admin_value\[session.upload_progress.enabled\] = 0$' "${fpm_www}"; then
+    pass "FPM locks session.upload_progress.enabled off"
+else
+    fail "www.conf must lock session.upload_progress.enabled off"
+fi
+
 if grep -q -- '--max-time 5' "${hc}"; then
     pass "healthcheck.sh --max-time 5"
 else

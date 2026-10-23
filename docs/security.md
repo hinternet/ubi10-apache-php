@@ -38,6 +38,9 @@ A Drupal site also needs writable public/private files (see
   `security.limit_extensions = .php .phar`. `cgi.fix_pathinfo=0`.
 - `settings.php` / `services.yml` are `Require all denied` in the docroot
   Directory (the FPM `-f` guard would otherwise execute a real `settings.php`).
+- FPM locks `session.upload_progress.enabled` off with `php_admin_value`.
+  That is PHP's mitigation for CVE-2026-115560. Drupal 11 file progress uses
+  the `uploadprogress` extension, so the lock can stay after that CVE is fixed.
 
 ## Public files (SA-2006-006 / SA-2013-003)
 
