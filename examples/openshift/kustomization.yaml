@@ -14,4 +14,4 @@ resources:
 images:
   - name: ubi10-apache-php
     newName: ubi10-apache-php
-    newTag: "1.0.0"
+    newTag: "1.1.0"

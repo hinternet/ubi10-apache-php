@@ -11,6 +11,7 @@ deploy under SCC `restricted-v2`.
 | PHP | 8.4 FPM from Remi `php:remi-8.4` |
 | Transport | `mod_proxy_fcgi` → `unix:/run/php-fpm/drupal.sock` |
 | Composer | official `composer:2.10` binary (digest-pinned) |
+| Images | GD (JPEG/PNG/WebP) and Imagick 7 + librsvg2 (SVG → PNG) |
 | App | `HOME`/`WORKDIR` `/var/www/html`, `DocumentRoot` `/var/www/html/web` |
 | User | `USER 1001`, gid 0; `nss_wrapper` if the OpenShift UID is missing from passwd |
 | Listen | **8080 only** (edge TLS on the Route; no `mod_ssl` in the pod) |
@@ -19,7 +20,7 @@ Config is baked in `rootfs/` at build time. There is no gomplate, gotpl, or
 `tpl.sh`.
 
 Local tag: `ubi10-apache-php:latest` (`linux/amd64`, Podman via `CONTAINER_ENGINE`;
-`CONTAINER_ENGINE=docker` is supported). OpenShift examples use `:1.0.0`.
+`CONTAINER_ENGINE=docker` is supported). OpenShift examples use `:1.1.0`.
 
 ## Quick start
 
@@ -44,12 +45,14 @@ Name: `docker.io/<your-hub-username>/ubi10-apache-php`
 
 | Tag | What it is | Use |
 |---|---|---|
-| `1.0.0` (`IMAGE_VERSION`) | This release | **Pin this** in OpenShift / `FROM` |
-| `1.0` | Latest `1.0.x` | Optional floating minor |
+| `1.1.0` (`IMAGE_VERSION`) | This release | **Pin this** in OpenShift / `FROM` |
+| `1.1` | Latest `1.1.x` | Optional floating minor |
 | `latest` | Moving pointer | Local convenience only |
 
-Bump `IMAGE_VERSION` in the Makefile for each publish: patch (`1.0.1`) for
-fixes, minor (`1.1.0`) for compatible additions, major (`2.0.0`) for breaks
+`1.0.0` and `1.0` stay on the previous image. Do not retag them.
+
+Bump `IMAGE_VERSION` in the Makefile for each publish: patch (`1.1.1`) for
+fixes, minor (`1.2.0`) for compatible additions, major (`2.0.0`) for breaks
 (PHP major, process model).
 
 Create a [Docker Hub](https://hub.docker.com) access token (Account Settings →
@@ -60,7 +63,7 @@ not your email. Do not put the token in git.
 export DOCKERHUB_USER=myuser          # Docker Hub username
 export DOCKERHUB_TOKEN=dckr_pat_…     # access token (stdin login; not printed)
 make build test
-make push                             # logs in if TOKEN is set; pushes 1.0.0, 1.0, latest
+make push                             # logs in if TOKEN is set; pushes 1.1.0, 1.1, latest
 ```
 
 Already logged in (`podman login docker.io` / `docker login`):
@@ -78,18 +81,18 @@ make push REGISTRY_USER=myuser PUSH_DRY_RUN=1
 Then pull / `FROM`:
 
 ```dockerfile
-FROM docker.io/myuser/ubi10-apache-php:1.0.0
+FROM docker.io/myuser/ubi10-apache-php:1.1.0
 ```
 
 OpenShift: set `images.newName` in `examples/openshift/kustomization.yaml` to
-`docker.io/myuser/ubi10-apache-php` and keep `newTag: "1.0.0"`.
+`docker.io/myuser/ubi10-apache-php` and keep `newTag: "1.1.0"`.
 
 ## Downstream image
 
 Do **not** set `COMPOSER_ALLOW_SUPERUSER`. The image user is `1001`, not root.
 
 ```dockerfile
-FROM docker.io/<hub-user>/ubi10-apache-php:1.0.0
+FROM docker.io/<hub-user>/ubi10-apache-php:1.1.0
 
 COPY --chown=1001:0 composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist

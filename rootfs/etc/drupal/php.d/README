@@ -8,6 +8,6 @@ Do not add extension= lines — Remi already loads the .so files.
   40-apcu.ini        APCu 128M, serializer=php (Drupal 11 core default serializer)
   40-igbinary.ini    compact strings (no session handler)
   50-memcached.ini   igbinary serializer, no default server
-  50-redis.ini       comment-only; no host / no session handler
+  50-redis.ini       comment-only; no host (FPM sessions stay on files)
 
 CLI-only overrides live in /etc/drupal/php-cli.d (non-start path only).

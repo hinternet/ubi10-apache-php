@@ -6,7 +6,7 @@ The image user is `1001` (gid 0). Copy as that user. **Do not** set
 `COMPOSER_ALLOW_SUPERUSER=1`. **Do not** `USER root` for Composer.
 
 ```dockerfile
-FROM docker.io/<hub-user>/ubi10-apache-php:1.0.0
+FROM docker.io/<hub-user>/ubi10-apache-php:1.1.0
 
 COPY --chown=1001:0 composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist \
@@ -87,5 +87,13 @@ build, run `make versions` and keep the `rpm -qa` output with the git tag.
 
 ## What not to add in the base
 
-gcc/g++/make/re2c, jpegoptim, ImageMagick, wget, Xdebug, `mod_ssl`, HTTP/2,
+gcc/g++/make/re2c, jpegoptim, wget, Xdebug, the `ghostscript` package, `mod_ssl`, HTTP/2,
 brotli RPM, tini, supervisord, runtime templating, or Drupal core/contrib.
+
+Imagick 7 (`php-pecl-imagick-im7`) and `librsvg2` are already in the base.
+Do not install EPEL `php-pecl-imagick` (it is built for a different PHP ABI).
+Drupal core's image toolkit stays GD. Code that constructs `Imagick` can
+`readImageBlob()` an SVG and `setImageFormat('png24')`. PDF, PostScript, and
+the internal MSVG coder stay disabled in the ImageMagick policy. Resource
+caps are pinned there: memory 256MiB, map 512MiB, disk 1GiB, area 128MP,
+16KP, 60s.

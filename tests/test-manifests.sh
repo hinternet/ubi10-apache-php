@@ -48,10 +48,10 @@ else
     fail "deployment missing containerPort 8080"
 fi
 
-if grep -q 'image: ubi10-apache-php:1.0.0' "${deploy}"; then
-    pass "deployment image is ubi10-apache-php:1.0.0 (not :latest)"
+if grep -q 'image: ubi10-apache-php:1.1.0' "${deploy}"; then
+    pass "deployment image is ubi10-apache-php:1.1.0 (not :latest)"
 else
-    fail "deployment image must be ubi10-apache-php:1.0.0, not :latest"
+    fail "deployment image must be ubi10-apache-php:1.1.0, not :latest"
 fi
 
 if grep -q 'automountServiceAccountToken: false' "${deploy}"; then
@@ -70,6 +70,12 @@ if grep -A6 'resources:' "${deploy}" | grep -q 'memory:'; then
     pass "deployment sets memory resources"
 else
     fail "deployment missing memory resources"
+fi
+
+if grep -q 'memory: 1Gi' "${deploy}"; then
+    pass "deployment memory request is 1Gi"
+else
+    fail "deployment memory request must be 1Gi (opcache+apcu exceed 512Mi at idle)"
 fi
 
 probe_exec="$(grep -c 'command: \["/opt/drupal/scripts/healthcheck.sh"\]' "${deploy}" || true)"
@@ -155,9 +161,9 @@ fi
 
 push_dry="$(make -C "${ROOT}" --no-print-directory push REGISTRY_USER=ci-dry-run PUSH_DRY_RUN=1)"
 if printf '%s\n' "${push_dry}" | grep -q 'docker.io/ci-dry-run/ubi10-apache-php' \
-    && printf '%s\n' "${push_dry}" | grep -q '1.0.0' \
+    && printf '%s\n' "${push_dry}" | grep -q '1.1.0' \
     && printf '%s\n' "${push_dry}" | grep -q 'PUSH_DRY_RUN=1'; then
-    pass "make push PUSH_DRY_RUN prints docker.io/USER/ubi10-apache-php:1.0.0"
+    pass "make push PUSH_DRY_RUN prints docker.io/USER/ubi10-apache-php:1.1.0"
     log "    ${push_dry}" | sed 's/^/    /'
 else
     fail "make push dry-run output: ${push_dry}"

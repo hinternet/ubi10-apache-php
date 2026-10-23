@@ -32,7 +32,13 @@ ARG INSTALL_PHP_EXTS="php-mysqlnd php-pgsql php-bcmath php-curl php-gd php-gmp \
                       php-pdo php-process php-soap php-sodium php-xml"
 
 ARG INSTALL_PHP_PECL="php-pecl-apcu php-pecl-igbinary php-pecl-memcached \
-                      php-pecl-redis6 php-pecl-uploadprogress php-pecl-zip"
+                      php-pecl-redis6 php-pecl-uploadprogress php-pecl-zip \
+                      php-pecl-imagick-im7"
+
+# librsvg2 is a hard dependency for the ImageMagick SVG coder. install_weak_deps=0
+# would drop it if it were only a weak dep of ImageMagick-libs. Not the EPEL
+# php-pecl-imagick package (PHP 8.3 ABI) and not Ghostscript.
+ARG INSTALL_IMAGE_PKGS="librsvg2"
 
 RUN set -x; \
     microdnf ${MICRODNF_FLAGS} install -y ${INSTALL_BASE_PKGS}; \
@@ -51,19 +57,32 @@ RUN set -x; \
     microdnf ${MICRODNF_FLAGS} module reset -y php || true; \
     microdnf ${MICRODNF_FLAGS} module enable -y "php:remi-${PHP_VERSION}"; \
     microdnf ${MICRODNF_FLAGS} install -y \
-        ${INSTALL_PHP_PKGS} ${INSTALL_PHP_EXTS} ${INSTALL_PHP_PECL}; \
+        ${INSTALL_PHP_PKGS} ${INSTALL_PHP_EXTS} ${INSTALL_PHP_PECL} ${INSTALL_IMAGE_PKGS}; \
     microdnf ${MICRODNF_FLAGS} clean all; \
     rm -rf /var/cache/dnf /var/cache/yum; \
+    if rpm -q php-pecl-imagick >/dev/null 2>&1; then \
+        echo "refusing EPEL php-pecl-imagick (wrong PHP ABI)"; \
+        exit 1; \
+    fi; \
+    rpm -q php-pecl-imagick-im7 >/dev/null; \
+    rpm -q librsvg2 >/dev/null; \
+    if rpm -q ghostscript >/dev/null 2>&1; then \
+        echo "refusing ghostscript"; \
+        exit 1; \
+    fi; \
     php -v | grep -qE "^PHP ${PHP_VERSION}\."; \
     php-fpm -v | grep -qE "^PHP ${PHP_VERSION}\."; \
     php -r 'exit(defined("PASSWORD_ARGON2ID") ? 0 : 1);'; \
-    php -r 'foreach (["curl","gd","mbstring","xml","zip","pdo_mysql","pdo_pgsql","openssl","zlib","fileinfo","json","apcu","igbinary","sodium"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR, "missing ext $e\n"); exit(1);} }'; \
+    php -r 'foreach (["curl","gd","mbstring","xml","zip","pdo_mysql","pdo_pgsql","openssl","zlib","fileinfo","json","apcu","igbinary","sodium","imagick"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR, "missing ext $e\n"); exit(1);} }'; \
     php -m | grep -qi opcache; \
     php-fpm -m | grep -qi opcache; \
     php -r '$i=gd_info(); foreach (["JPEG Support","PNG Support","WebP Support"] as $k) { if (empty($i[$k])) { fwrite(STDERR, "gd missing $k\n"); var_export($i); exit(1);} }'
 
 COPY --from=docker.io/composer:2.10@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
 COPY rootfs/ /
+
+# Policy patch + SVG→PNG24 proof. Runs after COPY so the script is in the layer.
+RUN bash /opt/drupal/scripts/configure-imagick-policy.sh
 
 RUN set -x; \
     useradd -l -u ${UID} -g ${GID} -d ${HOME} -s /sbin/nologin -M drupal; \
@@ -90,7 +109,7 @@ RUN set -x; \
     find / -xdev -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true; \
     composer --version
 
-ARG IMAGE_VERSION=1.0.0
+ARG IMAGE_VERSION=1.1.0
 ARG BUILD_DATE=unknown
 ARG GIT_REVISION=unknown
 ARG GIT_SOURCE=unknown

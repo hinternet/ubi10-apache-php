@@ -14,4 +14,4 @@ socket, OpenShift `restricted-v2`.
 Example YAML: [`../examples/openshift/`](../examples/openshift/).
 
 Build and test locally with `make lint`, `make build`, and `make test`
-(see the root README). CI runs the same targets (`.github/workflows/ci.yml`).
+(see the root README).

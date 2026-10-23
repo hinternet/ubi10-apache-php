@@ -82,6 +82,20 @@ supervisord.
 FPM workers inherit the container environment. Do not pass build-time secrets
 (tokens, Composer auth) as runtime env on the `start` path.
 
+## ImageMagick
+
+`php-pecl-imagick-im7` and `librsvg2` rasterize SVG in PHP
+(`Imagick::readImageBlob` → PNG). GD remains Drupal core's toolkit.
+
+The ImageMagick policy allows the SVG coder and denies PDF, PostScript, MVG,
+MSVG, MSL, TEXT, and URL/HTTP(S). MSVG is ImageMagick's internal SVG coder;
+SVG rasterization goes through librsvg. The `ghostscript` package is not
+installed. `ImageMagick-libs` still links `libgs`; the policy is what stops
+PDF and PostScript from using it. The same patch pins resource limits so a
+later ImageMagick RPM cannot loosen them: memory 256MiB, map 512MiB, disk
+1GiB, area 128MP, width and height 16KP, time 60s. A hostile SVG can still
+spend that budget. Indirect reads (`@*`) are denied.
+
 ## Supply chain
 
 UBI digest, EPEL/Remi RPM sha256, Composer digest are pinned.

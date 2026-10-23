@@ -99,6 +99,109 @@ else
     fail "GD JPEG/PNG/WebP: ${gdout}"
 fi
 
+if cli php -r 'exit(extension_loaded("imagick") ? 0 : 1);'; then
+    pass "imagick extension"
+else
+    fail "imagick extension missing"
+fi
+
+# -i so php reads the script on stdin. cli() does not attach stdin.
+if "${ENGINE}" run --rm -i --user 1001:0 "${IMAGE}" php <<'PHP'
+<?php
+$svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#ff0000"/><text x="4" y="20" font-size="12">OK</text></svg>';
+$im = new Imagick();
+$im->readImageBlob($svg);
+$im->resizeImage(32, 32, Imagick::FILTER_LANCZOS, 1);
+$im->setImageFormat("png24");
+$blob = $im->getImageBlob();
+if (!str_starts_with($blob, "\x89PNG")) {
+    fwrite(STDERR, "SVG did not become a PNG\n");
+    exit(1);
+}
+try {
+    $pdf = new Imagick();
+    $pdf->readImageBlob("%PDF-1.4\n");
+    fwrite(STDERR, "PDF coder accepted a document\n");
+    exit(1);
+} catch (ImagickException $e) {
+    $message = $e->getMessage();
+    if (stripos($message, "security policy") === false && stripos($message, "not authorized") === false) {
+        fwrite(STDERR, "PDF failure was not a policy denial: {$message}\n");
+        exit(1);
+    }
+}
+$path = tempnam(sys_get_temp_dir(), "msvg");
+if ($path === false) {
+    fwrite(STDERR, "could not create MSVG probe\n");
+    exit(1);
+}
+try {
+    if (file_put_contents($path, $svg) === false) {
+        fwrite(STDERR, "could not write MSVG probe\n");
+        exit(1);
+    }
+    try {
+        $msvg = new Imagick();
+        $msvg->readImage("msvg:" . $path);
+        fwrite(STDERR, "MSVG coder accepted a document\n");
+        exit(1);
+    } catch (ImagickException $e) {
+        $message = $e->getMessage();
+        if (stripos($message, "security policy") === false && stripos($message, "not authorized") === false) {
+            fwrite(STDERR, "MSVG failure was not a policy denial: {$message}\n");
+            exit(1);
+        }
+    }
+} finally {
+    unlink($path);
+}
+PHP
+then
+    pass "Imagick SVG→png24; PDF and MSVG coders denied by policy"
+else
+    fail "Imagick SVG→png24 or PDF/MSVG policy"
+fi
+
+policy_out="$(cli bash -c 'cat /etc/ImageMagick-*/policy.xml')"
+missing=""
+for needle in \
+    'rights="read|write" pattern="SVG"' \
+    'pattern="{MVG,MSVG,MSL,TEXT,EPS,PS,PS2,PS3,PDF,XPS,HTTP,HTTPS,URL}"' \
+    'pattern="@*"' \
+    'name="memory" value="256MiB"' \
+    'name="map" value="512MiB"' \
+    'name="disk" value="1GiB"' \
+    'name="area" value="128MP"' \
+    'name="width" value="16KP"' \
+    'name="height" value="16KP"' \
+    'name="time" value="60"'
+do
+    if [[ "${policy_out}" != *"${needle}"* ]]; then
+        missing="${missing} [${needle}]"
+    fi
+done
+if [[ -z "${missing}" ]]; then
+    pass "ImageMagick policy pins SVG allow, coder denials, and resource caps"
+else
+    fail "ImageMagick policy missing:${missing}"
+fi
+
+if cli rpm -q php-pecl-imagick-im7 >/dev/null && cli rpm -q librsvg2 >/dev/null; then
+    pass "php-pecl-imagick-im7 and librsvg2 installed"
+else
+    fail "php-pecl-imagick-im7 or librsvg2 missing"
+fi
+if cli rpm -q php-pecl-imagick >/dev/null 2>&1; then
+    fail "EPEL php-pecl-imagick must not be installed"
+else
+    pass "EPEL php-pecl-imagick absent"
+fi
+if cli rpm -q ghostscript >/dev/null 2>&1; then
+    fail "ghostscript package must not be installed"
+else
+    pass "ghostscript package absent"
+fi
+
 bins="$(cli bash -c 'command -v mysql; command -v mysqldump; command -v psql; command -v pg_dump')"
 if cli bash -c 'command -v mysql && command -v mysqldump && command -v psql && command -v pg_dump' >/dev/null; then
     pass "mysql+mysqldump+psql+pg_dump on PATH"
@@ -262,6 +365,33 @@ printf "%s\n" "<?php echo \"PWNED\";" > "${dir}/evil.phtml"
         pass "settings.php denied (HTTP ${HTTP_CODE})"
     fi
 
+    # Same deny without scaffold .htaccess: default.settings.php and
+    # development.services.yml are not covered by the old settings|services regex.
+    "${ENGINE}" exec "${name}" bash -c '
+set -euo pipefail
+mv /var/www/html/web/.htaccess /tmp/htaccess.bak
+mkdir -p /var/www/html/web/sites/default
+printf "%s\n" "<?php echo \"DEFAULT_SETTINGS_LEAK\";" > /var/www/html/web/sites/default/default.settings.php
+printf "%s\n" "leak: true" > /var/www/html/web/sites/development.services.yml
+'
+    http_code_body "${name}" http://127.0.0.1:8080/sites/default/default.settings.php
+    def_code="${HTTP_CODE}"
+    def_body="${HTTP_BODY}"
+    http_code_body "${name}" http://127.0.0.1:8080/sites/development.services.yml
+    yml_code="${HTTP_CODE}"
+    yml_body="${HTTP_BODY}"
+    "${ENGINE}" exec "${name}" mv /tmp/htaccess.bak /var/www/html/web/.htaccess
+    if [[ "${def_code}" == "200" || "${def_body}" == *DEFAULT_SETTINGS_LEAK* ]]; then
+        fail "default.settings.php executable without .htaccess: HTTP ${def_code} body=${def_body}"
+    else
+        pass "default.settings.php denied without .htaccess (HTTP ${def_code})"
+    fi
+    if [[ "${yml_code}" == "200" || "${yml_body}" == *leak:* ]]; then
+        fail "development.services.yml readable without .htaccess: HTTP ${yml_code} body=${yml_body}"
+    else
+        pass "development.services.yml denied without .htaccess (HTTP ${yml_code})"
+    fi
+
     # After RemoteIP, a public X-Forwarded-For must not get pong.
     http_code_body "${name}" http://127.0.0.1:8080/healthz -H "X-Forwarded-For: 8.8.8.8"
     if [[ "${HTTP_CODE}" == "200" && "${HTTP_BODY}" == "pong" ]]; then
@@ -358,10 +488,10 @@ else
 fi
 
 ver="$("${ENGINE}" inspect -f '{{index .Config.Labels "org.opencontainers.image.version"}}' "${IMAGE}")"
-if [[ "${ver}" == "1.0.0" ]]; then
-    pass "org.opencontainers.image.version=1.0.0"
+if [[ "${ver}" == "1.1.0" ]]; then
+    pass "org.opencontainers.image.version=1.1.0"
 else
-    fail "org.opencontainers.image.version expected 1.0.0, got: ${ver}"
+    fail "org.opencontainers.image.version expected 1.1.0, got: ${ver}"
 fi
 
 rev="$("${ENGINE}" inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${IMAGE}")"

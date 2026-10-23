@@ -2,7 +2,7 @@
 
 IMAGE_NAME       ?= ubi10-apache-php
 IMAGE_TAG        ?= latest
-IMAGE_VERSION    ?= 1.0.0
+IMAGE_VERSION    ?= 1.1.0
 CONTAINER_ENGINE ?= podman
 CONTAINER_NAME   ?= $(IMAGE_NAME)
 SHELL_CONTAINER_NAME ?= $(CONTAINER_NAME)-shell
@@ -63,8 +63,9 @@ build: ## Build the image (NOCACHE=1 to disable cache)
 clean: ## Remove the local image tag
 	-$(CONTAINER_ENGINE) rmi -f $(IMAGE) 2>/dev/null || true
 
-cc: ## Remove all local containers
-	-$(CONTAINER_ENGINE) rm -f -a 2>/dev/null || true
+cc: ## Remove containers whose name contains IMAGE_NAME
+	@ids="$$($(CONTAINER_ENGINE) ps -aq --filter "name=$(IMAGE_NAME)")"; \
+	if [ -n "$$ids" ]; then $(CONTAINER_ENGINE) rm -f $$ids; fi
 
 shell: ## Ephemeral shell (entrypoint still runs, CMD is /bin/bash)
 	$(CONTAINER_ENGINE) run --rm -it $(RUN_ENV) $(IMAGE) /bin/bash
@@ -112,6 +113,7 @@ lint: ## hadolint + shellcheck (skips a tool if it is not installed)
 		shellcheck -S warning \
 			rootfs/opt/drupal/scripts/entrypoint.sh \
 			rootfs/opt/drupal/scripts/healthcheck.sh \
+			rootfs/opt/drupal/scripts/configure-imagick-policy.sh \
 			tests/test-image.sh \
 			tests/test-manifests.sh || status=$$?; \
 	else \
@@ -160,7 +162,7 @@ login: ## Log in to docker.io (REGISTRY_USER / DOCKERHUB_USER; DOCKERHUB_TOKEN o
 		$(CONTAINER_ENGINE) login $(REGISTRY) -u "$$user"; \
 	fi
 
-push: ## Push IMAGE_VERSION, 1.0, and latest to docker.io/USER/ubi10-apache-php
+push: ## Push IMAGE_VERSION, its minor tag, and latest to docker.io/USER/ubi10-apache-php
 	@user="$(REGISTRY_USER)"; \
 	if [ -z "$$user" ]; then \
 		echo "Set REGISTRY_USER or DOCKERHUB_USER to your Docker Hub username (not email)."; \

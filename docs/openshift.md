@@ -79,8 +79,11 @@ See `examples/openshift/configmap.yaml`. The Deployment mounts it
 
 ## Resources
 
-The example requests 512Mi / 250m and limits 2Gi / 2 CPU. FPM
-`pm.max_children = 10` plus opcache 256M and APCu 128M need that headroom.
+The example requests 1Gi / 250m and limits 2Gi / 2 CPU. OPcache (256M) and
+APCu (128M) are reserved when FPM starts, so a 512Mi request is already below
+idle use. The 2Gi limit is the burst ceiling for `pm.max_children = 10`.
+ImageMagick allocations sit outside PHP `memory_limit` and are capped in
+`policy.xml` (memory 256MiB, map 512MiB, disk 1GiB, area 128MP, 16KP, 60s).
 Tune `zz-*.ini` and the FPM pool together with the limit.
 
 ## NetworkPolicy, PDB, service account
@@ -134,9 +137,9 @@ Apache already sets `HTTPS=on` from `X-Forwarded-Proto`.
 ## Image
 
 Build locally (`make build test`), then `make push` to Docker Hub
-(`docker.io/<hub-user>/ubi10-apache-php:1.0.0` — see the root README). Set
+(`docker.io/<hub-user>/ubi10-apache-php:1.1.0` — see the root README). Set
 `images.newName` in `examples/openshift/kustomization.yaml` to that repository
-(or `oc set image`). Prefer the version tag (`:1.0.0`) or a digest. Do not
+(or `oc set image`). Prefer the version tag (`:1.1.0`) or a digest. Do not
 deploy `:latest` with `imagePullPolicy: IfNotPresent`.
 
 Record `make versions` (`rpm -qa`) next to a release tag if you need to know

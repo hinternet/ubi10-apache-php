@@ -25,7 +25,7 @@ spec:
         - name: httpd
           # Replace via kustomization images.newName after push, or oc set image.
           # Do not deploy :latest with IfNotPresent.
-          image: ubi10-apache-php:1.0.0
+          image: ubi10-apache-php:1.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -34,7 +34,7 @@ spec:
           resources:
             requests:
               cpu: 250m
-              memory: 512Mi
+              memory: 1Gi
             limits:
               cpu: "2"
               memory: 2Gi

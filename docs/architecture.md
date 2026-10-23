@@ -61,18 +61,26 @@ Downstream overrides: drop in `/etc/drupal/php.d/zz-*.ini` and
 Build fails if any of these are missing: `curl`, `gd` (JPEG/PNG/WebP; AVIF is
 not a hard fail), `mbstring`, `xml`, `zip` (`php-pecl-zip`), `pdo_mysql`,
 `pdo_pgsql`, `openssl`, `zlib`, `fileinfo`, `json`, `opcache`, `apcu`,
-`igbinary`, `sodium`, and `PASSWORD_ARGON2ID` (PHP compile flag; no argon2 RPM).
+`igbinary`, `sodium`, `imagick` (ImageMagick 7), and `PASSWORD_ARGON2ID`
+(PHP compile flag; no argon2 RPM).
 
 Also on PATH: `git`, `patch`, `mysql`, `mysqldump`, `psql`, `pg_dump` (client
-RPMs `mariadb` and `postgresql`, not `*-server`). ImageMagick, jpegoptim,
-gcc/g++/make/re2c, wget, and `mod_ssl` are not installed.
+RPMs `mariadb` and `postgresql`, not `*-server`). jpegoptim, gcc/g++/make/re2c,
+wget, the `ghostscript` package, and `mod_ssl` are not installed.
+`ImageMagick-libs` still links `libgs` and Graphviz.
 
-GD is the image toolkit. ImageMagick stays out of the base.
+GD is Drupal core's image toolkit (JPEG/PNG/WebP). SVG rasterization is the
+PHP Imagick extension built against ImageMagick 7 (`php-pecl-imagick-im7`)
+plus `librsvg2`. The build patches `/etc/ImageMagick-*/policy.xml` so the SVG
+coder is allowed and PDF, PostScript, MVG, MSVG, MSL, TEXT, and URL/HTTP(S)
+coders stay denied. The patch pins resource caps so the RPM policy cannot
+loosen them: memory 256MiB, map 512MiB, disk 1GiB, area 128MP, 16KP×16KP, 60s.
+EPEL `php-pecl-imagick` is refused (wrong PHP ABI).
 
 ## Image labels and platform
 
 `make build` sets `org.opencontainers.image.version` (`IMAGE_VERSION`, default
-`1.0.0`), `created` (`BUILD_DATE`), `revision` (`git rev-parse HEAD`), and
+`1.1.0`), `created` (`BUILD_DATE`), `revision` (`git rev-parse HEAD`), and
 `source` (`remote.origin.url` when configured). These override the UBI base
 revision label so the image refers to **this** git tree.
 
